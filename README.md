@@ -20,22 +20,25 @@ School funding is a widely debated policy topic, but the relationship between sp
 These three sources had no shared file structure, and SAIPE had no ready-made district ID — a significant part of this project involved cleaning, standardizing, and merging them into one trustworthy analysis table.
 
 ## Repository Structure
+
+```
 ├── datasets/
-│ ├── district_data_full.csv # Full merged dataset (unfiltered, used for clustering/PBI)
-│ ├── district_data_regression.csv # Regression-filtered dataset (enrollment/population thresholds + capped spending)
-│ ├── district_data_with_clusters.csv # Final dataset with k=3 cluster labels
-│ ├── district_residuals.csv # Regression residuals for diagnostics
-│ ├── finance.xlsx # Raw F-33 finance data
-│ ├── math.csv # Raw EDFacts math proficiency data , Not added due to size limit on github
-│ ├── Reading.csv # Raw EDFacts reading proficiency data , Not added due to size limit on github
-│ └── saipe.xlsx # Raw SAIPE poverty data
+│   ├── district_data_full.csv           # Full merged dataset (unfiltered, used for clustering/PBI)
+│   ├── district_data_regression.csv     # Regression-filtered dataset (enrollment/population thresholds + capped spending)
+│   ├── district_data_with_clusters.csv  # Final dataset with k=3 cluster labels
+│   ├── district_residuals.csv           # Regression residuals for diagnostics
+│   ├── finance.xlsx                     # Raw F-33 finance data
+│   ├── math.csv                         # Raw EDFacts math proficiency data, not added due to GitHub size limit
+│   ├── Reading.csv                      # Raw EDFacts reading proficiency data, not added due to GitHub size limit
+│   └── saipe.xlsx                       # Raw SAIPE poverty data
 ├── notebooks/
-│ ├── data.ipynb # Data cleaning and merging
-│ ├── Regression.ipynb # Baseline, interaction, and per-cluster regression models
-│ └── clustering.ipynb # K-means clustering and robustness checks
+│   ├── data.ipynb                       # Data cleaning and merging
+│   ├── Regression.ipynb                 # Baseline, interaction, and per-cluster regression models
+│   └── clustering.ipynb                 # K-means clustering and robustness checks
 ├── PBI/
-│ └── SCHOOL PROJECT.pbix # Power BI dashboard
+│   └── SCHOOL PROJECT.pbix              # Power BI dashboard
 └── README.md
+```
 
 ## Methodology
 
