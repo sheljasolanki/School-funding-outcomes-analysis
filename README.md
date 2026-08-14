@@ -81,7 +81,7 @@ These three sources had no shared file structure, and SAIPE had no ready-made di
 - Poverty rate: highly significant in both models (p < 0.001) — each 1-point increase in poverty associated with a **0.94-point decrease in math proficiency** and a **0.99-point decrease in reading proficiency**.
 - Per-pupil spending: **not significant for math** (p = 0.255); small but significant positive effect for reading (p = 0.001, minimal practical magnitude).
 - Diagnostics: VIF ≈ 1.05 for both predictors (no multicollinearity); residuals reasonably homoscedastic; Jarque-Bera test showed mild non-normality (Prob(JB) = 5.26e-28), not disqualifying given n≈12,000.
-- Interaction term (spending × poverty, centered to fix a high condition number — 1.72e+06 raw → 6.29e+04 centered): significant and negative in both models (p < 0.001) — spending shows a positive relationship with proficiency only below ~13% poverty rate; above that, the relationship weakens and turns negative.
+- Interaction term (spending × poverty) significant and negative in both models (p < 0.001) — **spending shows a positive relationship with proficiency only below ~13% poverty rate; above that threshold, the relationship turns negative and continues to weaken further as poverty rises**, consistent with the per-cluster regression results below.
 - Per-cluster regression: spending's negative association grows from Cluster 0 (-0.0001) → Cluster 1 (-0.00038) → Cluster 2 (-0.0014), consistent with the interaction finding.
 
 **Clustering (k=3, validated via silhouette score 0.321 vs. 0.236 for k=4):**
