@@ -62,8 +62,9 @@ These three sources had no shared file structure, and SAIPE had no ready-made di
   
 ## Tools Used
 
-- **Python** (pandas, statsmodels, scikit-learn) — data cleaning, regression, clustering
-- **SQL** — summary queries on the cleaned dataset
+- **Python** — data cleaning and merging (pandas)
+- **OLS Regression** (statsmodels) — baseline, interaction, and per-cluster models
+- **Machine Learning / K-Means Clustering** (scikit-learn) — district archetype identification
 - **Power BI** — interactive dashboard for exploring results
 
 ## Power BI Dashboard
