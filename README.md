@@ -1,235 +1,117 @@
-# 📚 School District Funding vs Student Achievement
+# School Funding & Student Outcomes Analysis
 
-An end-to-end data analytics project exploring the relationship between **school funding, district poverty, and student academic performance** across U.S. public school districts. The project combines data from multiple government sources, performs extensive data cleaning and feature engineering, applies statistical and machine learning techniques, and presents the findings through an interactive Power BI dashboard.
+An analysis of whether per-pupil school spending predicts student academic proficiency once district poverty is controlled for — using three federal datasets covering nearly every public school district in the United States.
 
----
+## Project Overview
 
-# 📌 Project Overview
+School funding is a widely debated policy topic, but the relationship between spending and outcomes is rarely tested directly against real data. This project combines district-level financial records, poverty estimates, and academic proficiency data to answer two questions:
 
-Education funding is often considered one of the primary factors influencing student achievement. However, districts with higher spending are frequently those with different socioeconomic characteristics, making it difficult to determine whether spending itself improves outcomes.
+1. Does per-pupil spending predict proficiency after controlling for poverty?
+2. Are there natural groupings (archetypes) of districts that share similar financial and academic profiles?
 
-This project investigates whether **higher per-pupil expenditure is associated with better academic performance after controlling for district poverty**. Using publicly available U.S. government datasets, a complete analytics pipeline was developed that includes data cleaning, exploratory data analysis, regression modeling, clustering, and dashboard visualization.
+## Data Sources
 
-The analysis focuses on answering the following question:
+| Source | Provider | Data |
+|---|---|---|
+| **EDFacts** | U.S. Department of Education | District-level math and reading proficiency rates |
+| **F-33** (School District Finance Survey) | U.S. Census Bureau (for NCES) | District-level revenue and expenditure data |
+| **SAIPE** (Small Area Income and Poverty Estimates) | U.S. Census Bureau | District-level child poverty and income estimates |
 
-> **Does increasing per-pupil spending improve student achievement, or is poverty the stronger predictor of educational outcomes?**
+These three sources had no shared file structure, and SAIPE had no ready-made district ID — a significant part of this project involved cleaning, standardizing, and merging them into one trustworthy analysis table.
 
----
+## Repository Structure
 
-# 🎯 Objectives
-
-- Integrate multiple government datasets into a single district-level dataset.
-- Clean and validate education, finance, and poverty data.
-- Engineer meaningful variables such as per-pupil expenditure and poverty rate.
-- Explore relationships between school funding, poverty, and student achievement.
-- Build regression models while controlling for poverty.
-- Identify different types of school districts using K-Means clustering.
-- Develop an interactive Power BI dashboard to communicate insights.
-
----
-
-# 📊 Datasets Used
-
-| Dataset | Source | Purpose |
-|----------|--------|---------|
-| EDFacts | U.S. Department of Education | District-level Math and Reading proficiency |
-| NCES F-33 Finance Survey | National Center for Education Statistics | School district finance and enrollment |
-| SAIPE | U.S. Census Bureau | District-level child poverty estimates |
-
----
-
-# ⚙️ Project Workflow
-
-```text
-Raw Government Datasets
-        │
-        ▼
-Data Cleaning & Validation
-        │
-        ▼
-Feature Engineering
-        │
-        ▼
-Merged District Dataset
-        │
- ┌──────┼──────────────┐
- │      │              │
- ▼      ▼              ▼
-EDA  Regression   Clustering
- │      │              │
- └──────┼──────────────┘
-        ▼
- Power BI Dashboard
+```
+├── datasets/
+│   ├── district_data_full.csv           # Full merged dataset (unfiltered, used for clustering/PBI)
+│   ├── district_data_regression.csv     # Regression-filtered dataset (enrollment/population thresholds + capped spending)
+│   ├── district_data_with_clusters.csv  # Final dataset with k=3 cluster labels
+│   ├── district_residuals.csv           # Regression residuals for diagnostics
+│   ├── finance.xlsx                     # Raw F-33 finance data
+│   ├── math.csv                         # Raw EDFacts math proficiency data, not added due to GitHub size limit
+│   ├── Reading.csv                      # Raw EDFacts reading proficiency data, not added due to GitHub size limit
+│   └── saipe.xlsx                       # Raw SAIPE poverty data
+├── notebooks/
+│   ├── data.ipynb                       # Data cleaning and merging
+│   ├── Regression.ipynb                 # Baseline, interaction, and per-cluster regression models
+│   └── clustering.ipynb                 # K-means clustering and robustness checks
+├── PBI/
+│   └── SCHOOL PROJECT.pbix              # Power BI dashboard
+└── README.md
 ```
 
----
+## Methodology
 
-# 🧹 Data Cleaning & Feature Engineering
+### Data Cleaning
 
-The raw datasets required extensive preprocessing before they could be analyzed.
+**EDFacts proficiency suppression handling**
+- Converted privacy-suppression codes (ranges, bounded codes like `LE10`/`GE95`, full suppression `PS`) into estimated midpoint values instead of dropping the ~32% of affected rows, avoiding bias toward larger districts.
+- Verified the resulting missing-value count exactly matched the original `PS` count — no data silently lost or misclassified.
 
-The major data preparation steps included:
+**Finance (F-33) cleaning**
+- Removed non-school agencies and unreported-finance rows using NCES's documented placeholder codes (`-1` = not reported, `-2` = not applicable).
+- Applied a minimum enrollment threshold (50 students) to separate specialized institutions and unstable per-pupil outliers from genuine small districts.
 
-- Cleaned EDFacts proficiency suppression codes.
-- Converted proficiency values into numeric format.
-- Converted valid test counts into numeric values.
-- Calculated district-level per-pupil expenditure.
-- Constructed district poverty rate from SAIPE estimates.
-- Removed invalid and incomplete district records.
-- Standardized district identifiers (LEAID) across datasets.
-- Merged all three government datasets.
-- Created separate datasets for regression and clustering.
-- Winsorized extreme spending values for regression analysis.
+**SAIPE poverty rate construction**
+- Reconstructed a matching district ID (LEAID) by concatenating State FIPS Code and District ID, verified against a known district present in all three sources.
+- Excluded districts with fewer than 100 school-age children, since very small populations produced statistically unstable poverty rate estimates.
 
-A detailed explanation of every cleaning decision and its rationale is available in the accompanying project report.
+**Final merge**
+- Merged EDFacts, finance, and SAIPE sequentially on `LEAID`, resulting in a final dataset of **12,158 districts** with zero missing values.
+- Maintained two parallel datasets: a full, unfiltered version for clustering/visualization (since small, high-spending districts are a meaningful pattern worth discovering), and a filtered, capped version for regression (enrollment ≥ 100, school-age population ≥ 100, spending capped at the 99th percentile) to prevent unstable small-denominator values from distorting coefficients.
 
----
+### Regression Analysis
+- Baseline OLS models (math and reading) testing proficiency against per-pupil spending and poverty rate.
+- Diagnostics: VIF (multicollinearity), residual plots (homoscedasticity), Jarque-Bera test (normality).
+- Extended with a centered interaction term (spending × poverty) and per-cluster regression to test whether spending's effect varies by poverty level and district archetype.
 
-# 📈 Exploratory Data Analysis
+### Clustering Analysis
+- K-means clustering on five standardized features (spending, poverty, math/reading proficiency, enrollment), run on the full unfiltered dataset.
+- Cluster count validated via silhouette score (k=3 over an ambiguous elbow-method estimate of k=4).
+- Robustness checks: log-transform test, per-sample silhouette analysis, and stability across random seeds (Adjusted Rand Index).
 
-Exploratory analysis was performed to understand the characteristics of the merged dataset before statistical modeling.
+## Key Findings
 
-The analysis included:
+**Regression:**
+- Poverty rate: highly significant in both models (p < 0.001) — each 1-point increase in poverty associated with a **0.94-point decrease in math proficiency** and a **0.99-point decrease in reading proficiency**.
+- Per-pupil spending: **not significant for math** (p = 0.255); small but significant positive effect for reading (p = 0.001, minimal practical magnitude).
+- Diagnostics: VIF ≈ 1.05 for both predictors (no multicollinearity); residuals reasonably homoscedastic; Jarque-Bera test showed mild non-normality (Prob(JB) = 5.26e-28), not disqualifying given n≈12,000.
+   Interaction term (spending × poverty) significant and negative in both models (p < 0.001) — **spending shows a positive relationship with proficiency only below ~13% poverty rate; above that threshold, the relationship turns negative and continues to weaken further as poverty rises**, consistent with the per-cluster regression results below.
+- Per-cluster regression: spending's negative association grows from Cluster 0 (-0.0001) → Cluster 1 (-0.00038) → Cluster 2 (-0.0014), broadly consistent with the interaction finding. It's worth noting this isn't perfectly explained by poverty alone — Cluster 2's poverty rate (17.77%) is actually lower than Cluster 1's (21.32%), yet Cluster 2 shows the most negative coefficient. This suggests Cluster 2's result also reflects something specific to being a large-scale urban district, not poverty alone; combined with its small sample size (n=34), it should be treated as suggestive rather than precise.
 
-- Summary statistics
-- Distribution analysis
-- Histogram visualization
-- Correlation analysis
-- Outlier investigation
-- Data quality validation
+**Clustering (k=3, validated via silhouette score 0.321 vs. 0.236 for k=4):**
 
-These analyses helped identify skewed variables, detect unusual observations, and validate that the data were suitable for further modeling.
+| Cluster | Description | Poverty Rate | Per-Pupil Spending | Math Prof. | Reading Prof. | Enrollment | n |
+|---|---|---|---|---|---|---|---|
+| 0 | Low-poverty, well-resourced, high-performing | 10.51% | $18,942.43 | 58.73% | 63.39% | 3,459.85 | 5,945 |
+| 1 | High-poverty, under-performing | 21.32% | $15,809.47 | 32.52% | 38.38% | 2,954.79 | 6,789 |
+| 2 | Large urban mega-districts | 17.77% | $14,180.71 | 46.68% | 48.79% | 168,610.68 | 34 |
 
----
+- Robustness: log-transformed enrollment tested but reduced separation (silhouette at k=3: 0.321 → 0.268), so raw enrollment was retained; per-sample silhouette showed no negative values in the mega-district cluster despite its small size; stability confirmed across random seeds (Adjusted Rand Index: 0.994–1.000).
+- Poverty is the dominant, consistent predictor of proficiency across all models; spending's effect is smaller, subject-dependent, and conditional on poverty level.
 
-# 📉 Regression Analysis
+## Power BI Dashboard
+<img width="1376" height="771" alt="Screenshot 2026-08-13 190050" src="https://github.com/user-attachments/assets/065b6bb6-7d65-4716-bb6b-77eb15fffc92" />
+<img width="1319" height="744" alt="Screenshot 2026-08-13 190135" src="https://github.com/user-attachments/assets/c34df08b-a50a-4dd9-b4ba-ef3291e2e753" />
+<img width="1319" height="743" alt="Screenshot 2026-08-13 190153" src="https://github.com/user-attachments/assets/091570e7-4ef0-4ae8-a10f-226f68676629" />
+<img width="1318" height="742" alt="Screenshot 2026-08-13 190213" src="https://github.com/user-attachments/assets/e12bc5be-bc11-4aa6-a58a-af8a4110de76" />
+<img width="1317" height="745" alt="Screenshot 2026-08-13 190230" src="https://github.com/user-attachments/assets/99e23c2a-a4cc-41c0-8adc-6b2721845859" />
 
-Ordinary Least Squares (OLS) regression models were built to evaluate the relationship between district funding and student achievement while controlling for poverty.
+## Tools Used
 
-Two baseline models were developed:
+- **Python** — data cleaning and merging (pandas)
+- **OLS Regression** (statsmodels) — baseline, interaction, and per-cluster models
+- **Machine Learning / K-Means Clustering** (scikit-learn) — district archetype identification
+- **Power BI** — interactive dashboard for exploring results
 
-- Math Proficiency Model
-- Reading Proficiency Model
+## Limitations
 
-Additional analyses included:
+- Suppressed proficiency values are estimated via midpoint conversion, not true reported values.
+- Regression stability thresholds (enrollment ≥ 100, school-age population ≥ 100) exclude some legitimate small districts.
+- R² values are modest, consistent with academic outcomes being influenced by many unmeasured factors (teacher quality, family circumstances, etc.) beyond spending and poverty.
+- The mega-district cluster (n=34) is already small before any regression filtering; its per-cluster regression ran on an even smaller subset, so those estimates should be treated as suggestive, not conclusive.
+- This is an observational, cross-sectional analysis — it identifies statistical associations, not causal relationships. Reverse causality and omitted variables (e.g., teacher quality, local governance) cannot be ruled out.
 
-- Variance Inflation Factor (VIF) analysis
-- Residual diagnostics
-- Interaction model (Spending × Poverty)
-- Cluster-specific regression
-- Prediction and residual analysis
+## Conclusion
 
----
-
-# 🤖 Clustering Analysis
-
-K-Means clustering was used to identify natural district archetypes based on educational, financial, and demographic characteristics.
-
-Features used for clustering:
-
-- Per-pupil expenditure
-- Poverty rate
-- Math proficiency
-- Reading proficiency
-- Student enrollment
-
-The clustering solution was validated using:
-
-- Elbow Method
-- Silhouette Score
-- Log-transformation robustness test
-- Per-sample silhouette analysis
-- Adjusted Rand Index (ARI)
-
----
-
-# 📊 Key Findings
-
-The analysis produced several important insights:
-
-- District poverty was the strongest predictor of student achievement.
-- After controlling for poverty, per-pupil spending showed no statistically significant relationship with Math proficiency.
-- Reading proficiency showed a small positive association with spending.
-- The relationship between spending and achievement varied across district types.
-- Three distinct district archetypes were identified:
-  - Low-poverty, high-performing districts
-  - High-poverty, lower-performing districts
-  - Large urban mega-districts
-
-Together, the regression and clustering analyses suggest that socioeconomic conditions play a larger role in explaining district-level academic outcomes than funding alone.
-
----
-
-# 📊 Power BI Dashboard
-
-An interactive Power BI dashboard was developed to present the project findings and enable exploration of district-level education data.
-
-The dashboard includes:
-
-- Funding overview
-- Academic performance metrics
-- Poverty analysis
-- District comparison
-- Cluster exploration
-- Interactive filtering and drill-down
-
-<img width="1376" height="771" alt="image" src="https://github.com/user-attachments/assets/25a85208-9bed-420b-9fc4-97c2c7abf1ab" />
-<img width="1319" height="744" alt="image" src="https://github.com/user-attachments/assets/4a5d3001-5c2d-42c9-9cf5-6dbbbd81afbf" />
-<img width="1319" height="743" alt="image" src="https://github.com/user-attachments/assets/0f40e62a-8fac-4575-8672-421195d4b411" />
-<img width="1318" height="742" alt="image" src="https://github.com/user-attachments/assets/bba1060a-8175-4ab5-a2f5-fcc60b52a8dd" />
-<img width="1317" height="745" alt="image" src="https://github.com/user-attachments/assets/c8b338a1-e25d-45f2-a2cd-3d3ee7aa02b1" />
-
-
----
-
-# 💻 Technologies Used
-
-### Programming
-
-- Python
-
-### Data Processing
-
-- Pandas
-- NumPy
-
-### Data Visualization
-
-- Matplotlib
-
-### Statistical Analysis
-
-- Statsmodels
-
-### Machine Learning
-
-- Scikit-learn
-
-### Business Intelligence
-
-- Power BI
-
-### Development Environment
-
-- Jupyter Notebook
-
----
-
-# 📌 Future Improvements
-
-Possible extensions of this project include:
-
-- Incorporating additional socioeconomic and demographic variables.
-- Expanding the analysis across multiple academic years.
-- Comparing linear regression with tree-based machine learning models.
-- Performing causal inference using quasi-experimental methods.
-- Enhancing the Power BI dashboard with additional policy-focused visualizations.
-
----
-
-# 📚 References
-
-- U.S. Department of Education – EDFacts
-- National Center for Education Statistics (NCES) F-33 Finance Survey
-- U.S. Census Bureau – Small Area Income and Poverty Estimates (SAIPE)
-
+Poverty is the dominant, consistent predictor of academic proficiency across all models. Per-pupil spending's effect is smaller, inconsistent across subjects, and conditional on poverty level — showing a modest positive relationship only in lower-poverty districts, and weakening or reversing as poverty increases. Clustering independently identified three coherent district archetypes — affluent high-performers, high-poverty under-performers, and large-scale, lower-cost mega-districts — and the interaction/per-cluster regression results reinforced the same core finding from a different analytical angle: spending is not a uniform lever for improving outcomes, and its relationship with proficiency depends heavily on the socioeconomic context of the district.
